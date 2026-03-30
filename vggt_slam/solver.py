@@ -38,12 +38,13 @@ class Solver:
     def __init__(self,
         init_conf_threshold: float,  # represents percentage (e.g., 50 means filter lowest 50%)
         lc_thres: float = 0.80,
-        vis_voxel_size: float = None):
+        vis_voxel_size: float = None,
+        enable_viewer: bool = True):
         
         self.init_conf_threshold = init_conf_threshold
         self.vis_voxel_size = vis_voxel_size
 
-        self.viewer = Viewer()
+        self.viewer = Viewer() if enable_viewer else None
 
         self.flow_tracker = FrameTracker()
         self.map = GraphMap()
@@ -60,6 +61,8 @@ class Solver:
         self.clip_timer = Accumulator()
 
     def set_point_cloud(self, points_in_world_frame, points_colors, name, point_size):
+        if self.viewer is None:
+            return
         if self.vis_voxel_size is not None:
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points_in_world_frame.astype(np.float64))
@@ -76,6 +79,8 @@ class Solver:
         )
 
     def set_submap_point_cloud(self, submap):
+        if self.viewer is None:
+            return
         # Add the point cloud to the visualization.
         points_in_world_frame = submap.get_points_in_world_frame(self.graph)
         points_colors = submap.get_points_colors()
@@ -83,17 +88,23 @@ class Solver:
         self.set_point_cloud(points_in_world_frame, points_colors, name, 0.001)
 
     def set_submap_poses(self, submap):
+        if self.viewer is None:
+            return
         # Add the camera poses to the visualization.
         extrinsics = submap.get_all_poses_world(self.graph)
         images = submap.get_all_frames()
         self.viewer.visualize_frames(extrinsics, images, submap.get_id())
 
     def update_all_submap_vis(self):
+        if self.viewer is None:
+            return
         for submap in self.map.get_submaps():
             self.set_submap_point_cloud(submap)
             self.set_submap_poses(submap)
 
     def update_latest_submap_vis(self):
+        if self.viewer is None:
+            return
         submap = self.map.get_latest_submap()
         self.set_submap_point_cloud(submap)
         self.set_submap_poses(submap)

@@ -19,6 +19,7 @@ from vggt.models.vggt import VGGT
 parser = argparse.ArgumentParser(description="VGGT-SLAM demo")
 parser.add_argument("--image_folder", type=str, default="examples/kitchen/images/", help="Path to folder containing images")
 parser.add_argument("--vis_map", action="store_true", help="Visualize point cloud in viser as it is being build, otherwise only show the final map")
+parser.add_argument("--headless", action="store_true", help="Disable viewer startup and skip all visualization updates")
 parser.add_argument("--vis_voxel_size", type=float, default=None, help="Voxel size for downsampling the point cloud in the viewer (e.g. 0.05 for 5 cm). Default: no downsampling")
 parser.add_argument("--run_os", action="store_true", help="Enable open-set semantic search with Perception Encoder CLIP and SAM3")
 parser.add_argument("--vis_flow", action="store_true", help="Visualize optical flow from RAFT for keyframe selection")
@@ -38,6 +39,8 @@ def main():
     Main function that wraps the entire pipeline of VGGT-SLAM.
     """
     args = parser.parse_args()
+    if args.run_os and args.headless:
+        parser.error("--run_os is not supported with --headless because semantic results require the viewer.")
 
     use_optical_flow_downsample = True
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,7 +49,8 @@ def main():
     solver = Solver(
         init_conf_threshold=args.conf_threshold,
         lc_thres=args.lc_thres,
-        vis_voxel_size=args.vis_voxel_size
+        vis_voxel_size=args.vis_voxel_size,
+        enable_viewer=not args.headless,
     )
 
     print("Initializing and loading VGGT model...")
@@ -192,7 +196,7 @@ def main():
                     line_width=8.0,
                 )
 
-    if not args.vis_map:
+    if not args.vis_map and not args.headless:
         # just show the map after all submaps have been processed
         solver.update_all_submap_vis()
 

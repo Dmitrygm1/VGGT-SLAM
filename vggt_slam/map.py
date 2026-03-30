@@ -163,16 +163,17 @@ class GraphMap:
 
     def save_framewise_pointclouds(self, graph, file_name):
         os.makedirs(file_name, exist_ok=True)
-        count = 0
         for submap in self.ordered_submaps_by_key():
             if submap.get_lc_status():
                 continue
-                count += len(submap.poses)
             pointclouds, frame_ids, conf_masks = submap.get_points_list_in_world_frame(graph)
-            for frame_id, pointcloud, conf_masks in zip(frame_ids, pointclouds, conf_masks):
-                # save pcd as numpy array
-                np.savez(f"{file_name}/{frame_id}.npz", pointcloud=pointcloud, mask=conf_masks)
-        assert count == len(self.rectifying_H_mats), "Number of rectifying mats and number of point maps do not match"
+            for index, (frame_id, pointcloud, conf_mask) in enumerate(zip(frame_ids, pointclouds, conf_masks)):
+                np.savez(
+                    f"{file_name}/{frame_id}.npz",
+                    pointcloud=pointcloud,
+                    mask=conf_mask,
+                    colors=submap.colors[index],
+                )
                 
 
     def write_points_to_file(self, graph, file_name):
