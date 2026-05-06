@@ -32,6 +32,7 @@ parser.add_argument("--max_loops", type=int, default=1, help="ONLY DEFAULT OF 1 
 parser.add_argument("--min_disparity", type=float, default=50, help="Minimum disparity to generate a new keyframe")
 parser.add_argument("--conf_threshold", type=float, default=25.0, help="Initial percentage of low-confidence points to filter out")
 parser.add_argument("--lc_thres", type=float, default=0.95, help="Threshold for image retrieval. Range: [0, 1.0]. Higher = more loop closures")
+parser.add_argument("--disable_flow_keyframes", action="store_true", help="Consume the prepared image sequence as-is instead of applying the optical-flow keyframe selector")
 
 
 def main():
@@ -42,7 +43,7 @@ def main():
     if args.run_os and args.headless:
         parser.error("--run_os is not supported with --headless because semantic results require the viewer.")
 
-    use_optical_flow_downsample = True
+    use_optical_flow_downsample = not args.disable_flow_keyframes
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
@@ -108,6 +109,7 @@ def main():
                     image_count += 1
         else:
             image_names_subset.append(image_name)
+            image_count += 1
 
         # Run submap processing if enough images are collected or if it's the last group of images.
         if len(image_names_subset) == args.submap_size + args.overlapping_window_size or image_name == image_names[-1]:
@@ -134,6 +136,9 @@ def main():
             image_names_subset = image_names_subset[-args.overlapping_window_size:]
 
     total_time = time.time() - total_time_start
+    if image_count == 0:
+        raise RuntimeError("No frames were selected for processing.")
+
     average_fps = total_time / image_count
     print(image_count, "frames processed")
     print("Total time:", total_time)
